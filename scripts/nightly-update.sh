@@ -2,9 +2,9 @@
 set -euo pipefail
 
 DATE=$(date +%Y%m%d)
-CREW_NAME="nightly-${DATE}"
+CREW_NAME="nightly_${DATE}"
 RIG="gastown"
-WIKI_REPO="$HOME/gt/gastown-wiki"
+TOWN_ROOT="$HOME/gt"
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "[nightly] $DATE — starting"
@@ -18,12 +18,17 @@ else
   echo "[nightly] dolt already running"
 fi
 
-# 2. Create a fresh crew in the gastown rig
-echo "[nightly] creating crew ${RIG}/${CREW_NAME}"
+# 2. Create the crew workspace (must run from town root)
+echo "[nightly] creating crew workspace ${RIG}/${CREW_NAME}"
+cd "$TOWN_ROOT"
 gt crew add "$CREW_NAME" --rig "$RIG"
 
-# 3. Nudge the crew with the mission brief
-echo "[nightly] nudging crew with mission"
-gt nudge "${RIG}/${CREW_NAME}" --stdin --mode immediate < "${SCRIPTS_DIR}/nightly-mission.md"
+# 3. Start the crew session (creates tmux session)
+echo "[nightly] starting crew session"
+gt crew start "$RIG" "$CREW_NAME"
 
-echo "[nightly] crew ${RIG}/${CREW_NAME} has been briefed. monitor via: gt crew status ${CREW_NAME} --rig ${RIG}"
+# 4. Nudge the crew with the mission brief
+echo "[nightly] nudging crew with mission"
+gt nudge "${RIG}/${CREW_NAME}" --stdin --mode queue < "${SCRIPTS_DIR}/nightly-mission.md"
+
+echo "[nightly] crew ${RIG}/${CREW_NAME} has been briefed"
