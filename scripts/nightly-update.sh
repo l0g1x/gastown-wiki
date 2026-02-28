@@ -65,4 +65,13 @@ fi
 echo "[nightly] cleaning up crew ${RIG}/${CREW_NAME}"
 gt crew stop "$CREW_NAME" --rig "$RIG" 2>/dev/null || true
 gt crew remove "$CREW_NAME" --rig "$RIG" --purge --force
+
+# 8. Update the gastown-wiki submodule in butane
+BUTANE_REPO="$HOME/butane"
+echo "[nightly] updating butane submodule"
+cd "$BUTANE_REPO"
+git submodule update --remote docs/gastown-wiki
+git add docs/gastown-wiki
+git diff --cached --quiet || git commit -m "docs: update gastown-wiki submodule ($DATE)" && git push
+
 echo "[nightly] done"
