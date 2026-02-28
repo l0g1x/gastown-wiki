@@ -9,11 +9,20 @@ SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "[nightly] $DATE — starting"
 
-# 1. Create a fresh crew in the gastown rig
+# 1. Ensure dolt is running (town may be down)
+if ! gt dolt status &>/dev/null; then
+  echo "[nightly] dolt not running, starting..."
+  gt dolt start
+  sleep 2
+else
+  echo "[nightly] dolt already running"
+fi
+
+# 2. Create a fresh crew in the gastown rig
 echo "[nightly] creating crew ${RIG}/${CREW_NAME}"
 gt crew add "$CREW_NAME" --rig "$RIG"
 
-# 2. Nudge the crew with the mission brief
+# 3. Nudge the crew with the mission brief
 echo "[nightly] nudging crew with mission"
 gt nudge "${RIG}/${CREW_NAME}" --stdin --mode immediate < "${SCRIPTS_DIR}/nightly-mission.md"
 
