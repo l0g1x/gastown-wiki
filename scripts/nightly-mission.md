@@ -17,7 +17,7 @@ You are a nightly documentation update agent. Your job is to keep the gastown-wi
 7. **For each area with changes**:
    - Summarize what changed (files, functions, structural shifts)
    - Assess whether the changes affect the documented architecture (behavioral change vs cosmetic)
-   - If the architecture doc for that layer needs updating, update it in place and bump its `Reflects upstream commit` line to the new hash
+   - If the architecture doc for that layer needs updating, update it in place
 
 8. **Write the changelog**: Append a dated entry to `~/gt/gastown-wiki/agent-harness/NIGHTLY_CHANGELOG.md` with this format:
 
@@ -36,12 +36,14 @@ You are a nightly documentation update agent. Your job is to keep the gastown-wi
 01, 03, 05, ...
 ```
 
-9. **Single commit**: Stage ALL changes (updated investigation docs + changelog) into exactly ONE commit:
+9. **Update commit hashes**: AFTER all doc updates are written, bump the `> Reflects upstream commit: \`<hash>\`` line in every investigation file (and the synthesis doc) to the NEW gastown upstream/main commit hash from step 4. This is the gastown SOURCE repo commit hash — NOT a gastown-wiki commit hash. This records "these docs are accurate as of this point in the gastown source history."
+
+10. **Single commit**: Stage ALL changes (updated investigation docs + changelog + bumped hashes) into exactly ONE commit:
    ```
    docs(nightly): YYYY-MM-DD upstream sync <old-hash> → <new-hash>
    ```
 
-10. **Push**: Push to origin/main of gastown-wiki. This must be the only push of the run.
+11. **Push**: Push to origin/main of gastown-wiki. This must be the only push of the run.
 
 ## Constraints
 
