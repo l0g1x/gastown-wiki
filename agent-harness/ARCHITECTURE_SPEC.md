@@ -1,14 +1,16 @@
 # Agent Harness Architecture Specification
 
-A technology-agnostic specification of the functional requirements that an agent harness must satisfy. This document describes **what** the harness does, not **how** any particular implementation achieves it.
+A universal specification for the infrastructure that transforms a bare AI agent session into a controllable, addressable, work-capable participant in a managed system. This document describes **principles and capabilities**, not mechanisms or technologies. It is intended as a foundation reference that any implementation can build upon.
 
 ---
 
 ## 1. Purpose
 
-The agent harness is the universal infrastructure that transforms a bare AI agent session into a controllable, addressable, work-capable participant in a multi-agent system. Every agent, regardless of its specialized role, sits inside the same harness. The harness provides the uniform scaffolding; roles provide the specialized intelligence.
+An AI agent session — left unmanaged — is a stateless, unaddressable, unsupervised process. It cannot receive work, coordinate with peers, survive failures, or be held accountable for its actions.
 
-The harness answers one question: **"What must we wrap around an AI session to make it a managed agent?"**
+The **agent harness** is the universal scaffolding that solves this. It wraps every agent — regardless of role, AI provider, or specialization — in a common control infrastructure. The harness provides the uniform envelope; roles provide the specialized intelligence.
+
+The harness answers one question: **"What must surround an AI session to make it a managed agent?"**
 
 ---
 
@@ -20,7 +22,7 @@ The harness is organized into 10 functional layers across 4 tiers.
 
 | Tier | Purpose | Layers |
 |------|---------|--------|
-| **Foundation** | Exists before the agent does anything | Session Container, Workspace Contract, Agent Identity |
+| **Foundation** | Exists before the agent does anything | Session Container, Workspace, Agent Identity |
 | **Runtime** | Governs active behavior | Prompt Assembly, Behavioral Controls, Communication |
 | **Work Flow** | How work moves through the agent | Work Binding → Execution Navigation → Work Delivery |
 | **Envelope** | Wraps all other layers | Lifecycle Contract |
@@ -29,284 +31,307 @@ The harness is organized into 10 functional layers across 4 tiers.
 
 Each layer exposes functionality through one of two surfaces:
 
-- **Outer surface** (system-facing): Mechanisms an operator or orchestrator uses to manage agents from outside. Invisible to the agent.
-- **Inner surface** (agent-facing): Mechanisms the agent itself uses to navigate work, communicate, and deliver results.
+- **Outer surface** (system-facing): How operators and orchestrators manage agents from outside. Invisible to the agent itself.
+- **Inner surface** (agent-facing): How the agent navigates work, communicates, and delivers results.
 
 Some layers bridge both surfaces.
 
 | Surface | Layers |
 |---------|--------|
-| Outer | Session Container, Workspace Contract, Agent Identity, Behavioral Controls, Lifecycle Contract |
+| Outer | Session Container, Workspace, Agent Identity, Behavioral Controls, Lifecycle Contract |
 | Bridge | Prompt Assembly, Work Binding |
 | Inner | Communication, Execution Navigation, Work Delivery |
 
 ---
 
-## 3. Layer Specifications
+## 3. Principles and Capabilities
 
-### L1 — Session Container
-
-The process environment in which the agent runs.
-
-**Functional Requirements:**
-
-| ID | Requirement |
-|----|-------------|
-| L1.1 | The agent MUST run in an isolated, named process container that can be addressed by a stable identifier. |
-| L1.2 | The container MUST survive operator disconnection. The agent continues running whether or not a human is attached. |
-| L1.3 | The container MUST support text injection — the ability to deliver arbitrary input to the agent's session from outside. |
-| L1.4 | The container MUST support crash recovery. If the agent process dies, the container persists and can be restarted without losing its identity. |
-| L1.5 | The container MUST support observation — the ability to read the agent's current output without affecting its execution. |
-| L1.6 | The container MUST support graceful shutdown via signal delivery. |
-| L1.7 | Each container MUST be assigned a deterministic, human-readable name derived from the agent's role and identity. |
-| L1.8 | Concurrent input injection into the same container MUST be serialized to prevent interleaved messages. |
+Each layer is specified as a **principle** (the fundamental truth) followed by **capabilities** (what an implementation must be able to do).
 
 ---
 
-### L2 — Workspace Contract
+### L1 — Session Container
 
-The filesystem world every agent inhabits.
+*The execution environment in which the agent runs.*
 
-**Functional Requirements:**
+**Principle:** An agent must exist within a durable, addressable execution boundary that is independent of any human operator's presence and controllable from outside.
 
-| ID | Requirement |
-|----|-------------|
-| L2.1 | Every agent MUST operate within a designated working directory whose path encodes its role and identity within the system hierarchy. |
-| L2.2 | The working directory path MUST be parseable to determine the agent's role (e.g., path segment patterns map to role types). |
-| L2.3 | Agents of the same role class MUST share behavioral configuration (hooks, guards, settings) via a common ancestor directory. |
-| L2.4 | Each workspace MUST provide access to the shared work-item database, either directly or via a redirection mechanism. |
-| L2.5 | The workspace MUST contain fallback context that the agent can read if the normal startup protocol fails. |
-| L2.6 | The workspace MUST enforce a boundary — the agent's tooling cannot traverse above the system root. |
-| L2.7 | The workspace MUST support identity locking — only one agent process may claim a given workspace at a time. |
-| L2.8 | Workspace types MUST support both persistent (full copy) and ephemeral (lightweight reference) modes. |
+**Capabilities:**
+
+| ID | Capability |
+|----|------------|
+| L1.1 | The agent runs within an isolated execution boundary that is uniquely addressable by a stable identifier. |
+| L1.2 | The execution boundary persists independently of operator connections. The agent continues running whether or not a human is observing it. |
+| L1.3 | The system can deliver instructions to a running agent from outside the agent's own process. |
+| L1.4 | If the agent process fails, the execution boundary persists and can host a replacement agent without losing its identity. |
+| L1.5 | The system can observe the agent's current state and output without affecting its execution. |
+| L1.6 | The system can request graceful termination of the agent process. |
+| L1.7 | Concurrent instruction delivery to the same agent is serialized to prevent corruption. |
+
+---
+
+### L2 — Workspace
+
+*The isolated environment an agent operates within.*
+
+**Principle:** Every agent must have a bounded, provisioned environment that provides access to shared resources while enforcing isolation. The agent's identity within the system must be discoverable from its workspace.
+
+**Capabilities:**
+
+| ID | Capability |
+|----|------------|
+| L2.1 | Every agent operates within a designated, isolated workspace from which its role and identity within the system hierarchy are discoverable. |
+| L2.2 | Agents of the same role class share behavioral configuration through a mechanism determined by the implementation. |
+| L2.3 | Each workspace provides access to the shared work-item store. |
+| L2.4 | The workspace contains fallback context that the agent can access if the normal startup protocol fails. |
+| L2.5 | The workspace enforces a boundary — the agent cannot access resources outside the system's managed scope. |
+| L2.6 | Only one agent process may claim a given workspace at a time. |
+| L2.7 | Workspaces can be provisioned at varying cost levels — from full independent copies to lightweight references — depending on the agent's persistence requirements. |
 
 ---
 
 ### L3 — Agent Identity
 
-Who the agent is and how it is configured.
+*Who the agent is and how it is configured.*
 
-**Functional Requirements:**
+**Principle:** Every agent must have an authoritative identity that is assigned at creation and immutable for the lifetime of its session. Configuration must resolve through a deterministic cascade from multiple sources.
 
-| ID | Requirement |
-|----|-------------|
-| L3.1 | Every role MUST be defined by a structured configuration that specifies: session naming pattern, working directory template, startup command, health thresholds, environment variables, and prompt template. |
-| L3.2 | Configuration MUST resolve through a cascade with clear priority order: ephemeral overrides > project-level > system-level > built-in defaults. |
-| L3.3 | The system MUST support multiple AI runtimes (different agent binaries/providers). Agent selection MUST be configurable per-role and per-project. |
-| L3.4 | A cost-tier mechanism MUST allow runtime remapping of role-to-agent assignments to balance capability against cost. |
-| L3.5 | The agent's authoritative identity MUST be injected as an environment variable at session creation, not inferred at runtime. |
-| L3.6 | New agent runtimes MUST be registerable by declaring their capabilities: binary name, autonomous-mode flags, process names for liveness detection, hook support, prompt delivery mode, and readiness detection method. |
+**Capabilities:**
+
+| ID | Capability |
+|----|------------|
+| L3.1 | Every role is defined by a structured configuration specifying its behavioral parameters: naming, workspace layout, startup procedure, health criteria, and context template. |
+| L3.2 | Configuration resolves through a cascade with a clear, deterministic priority order — from ephemeral overrides down through project, system, and built-in defaults. |
+| L3.3 | The system supports multiple AI runtimes. Agent runtime selection is configurable per role and per project. |
+| L3.4 | The system supports capability-cost tradeoffs — remapping which AI runtime serves a given role to balance capability against resource consumption. |
+| L3.5 | The agent's authoritative identity is established at session creation and is not self-discovered or mutable by the agent. |
+| L3.6 | New AI runtimes are integrable by declaring their capabilities (startup procedure, readiness detection, hook support, prompt delivery mode) without modifying the harness core. |
 
 ---
 
 ### L4 — Prompt Assembly
 
-What the agent knows at session start.
+*What the agent knows at session start.*
 
-**Functional Requirements:**
+**Principle:** The harness must construct and deliver a complete operational context to the agent at session start, and must be able to reconstruct a lighter version of that context when the agent's memory is constrained.
 
-| ID | Requirement |
-|----|-------------|
-| L4.1 | At session start, the harness MUST inject a complete role context into the agent containing: identity, available commands, behavioral protocols, and startup instructions. |
-| L4.2 | If work is assigned, the prompt MUST include the work item details and an autonomous execution directive that causes the agent to begin working immediately without human input. |
-| L4.3 | If a predecessor session existed (handoff or crash recovery), the prompt MUST include the predecessor's state summary. |
-| L4.4 | The prompt MUST include any pending messages from the agent's inbox, prioritized by urgency. |
-| L4.5 | Operators MUST be able to inject custom context (free-form instructions) that applies to all agents in the system. |
-| L4.6 | On context compaction (memory pressure), the harness MUST re-inject a lighter version of the role context that preserves identity and current work state without repeating the full role template. |
-| L4.7 | The prompt assembly pipeline MUST be a single entry point shared by all roles, with role-specific content provided via templates. |
+**Capabilities:**
+
+| ID | Capability |
+|----|------------|
+| L4.1 | At session start, the harness delivers a complete role context to the agent: identity, available operations, behavioral protocols, and startup instructions. |
+| L4.2 | If work is assigned, the context includes work item details and a directive that causes the agent to begin autonomously. |
+| L4.3 | If a predecessor session existed (handoff or recovery), the context includes the predecessor's state summary. |
+| L4.4 | The context includes any pending inbound messages, ordered by priority. |
+| L4.5 | Operators can inject custom instructions that apply to all agents across the system. |
+| L4.6 | Under memory pressure, the harness reconstructs a minimal context that preserves identity and current work state without repeating the full role template. |
+| L4.7 | Context assembly follows a uniform pipeline across all roles, with role-specific content supplied via pluggable templates. |
 
 ---
 
 ### L5 — Behavioral Controls
 
-What the agent can and cannot do.
+*What the agent can and cannot do.*
 
-**Functional Requirements:**
+**Principle:** The harness must be able to intercept, evaluate, and block agent actions at defined points in the agent's execution cycle. The agent must have no mechanism to bypass these controls.
 
-| ID | Requirement |
-|----|-------------|
-| L5.1 | The harness MUST intercept agent actions at defined lifecycle points: session start, each user/agent turn, before tool execution, and session stop. |
-| L5.2 | Before tool execution, the harness MUST evaluate the proposed action against a set of guard rules. Guards MUST be able to block actions by returning an error code. |
-| L5.3 | Guard rules MUST be composable: built-in defaults, user-level overrides, and role-specific overrides MUST merge via a deterministic algorithm (same matcher = replace, new matcher = append, empty = remove). |
-| L5.4 | The harness MUST provide guards against destructive operations (e.g., force-push, recursive delete, hard reset) and workflow violations (e.g., creating pull requests outside the designated flow). |
-| L5.5 | Autonomous agents MUST operate without interactive confirmation prompts. |
-| L5.6 | The behavioral controls configuration MUST be regenerable from source (binary defaults + user overrides) to recover from drift or corruption. |
+**Capabilities:**
+
+| ID | Capability |
+|----|------------|
+| L5.1 | The harness intercepts agent actions at defined lifecycle points: session start, each interaction turn, before action execution, and session stop. |
+| L5.2 | Before action execution, the harness evaluates the proposed action against a rule set and can block it. |
+| L5.3 | Rules are composable from multiple layers (built-in, operator, role-specific) through a deterministic merge algorithm. |
+| L5.4 | The harness prevents destructive operations and workflow violations as defined by the operator. |
+| L5.5 | Autonomous agents operate without interactive confirmation — controls are enforced programmatically, not by prompting a human. |
+| L5.6 | The full set of active rules is reproducible from its source inputs, recovering from any runtime drift. |
 
 ---
 
 ### L6 — Work Binding
 
-How work attaches to an agent.
+*How work attaches to an agent.*
 
-**Functional Requirements:**
+**Principle:** Work assignment must be durable, exclusive, and atomic. The binding lives in the system's persistent store — not in agent memory — and survives any number of agent restarts, failures, and replacements.
 
-| ID | Requirement |
-|----|-------------|
-| L6.1 | Work assignment MUST be durable — surviving agent restarts, crashes, and handoffs. The binding is stored in the work-item database, not in agent memory. |
-| L6.2 | A work item MUST be exclusively assigned to at most one agent at a time. Double-assignment MUST be prevented. |
-| L6.3 | Work binding MUST be atomic — the agent's "current work" reference and the work item's "assigned to" field MUST update together. |
-| L6.4 | Binding MUST occur BEFORE the agent session starts, so that the startup prompt assembly sees the assignment immediately. |
-| L6.5 | Work dispatch MUST support attaching a formula (execution plan) to the work item at binding time. |
-| L6.6 | Concurrent dispatch of the same work item MUST be prevented via locking. |
-| L6.7 | Work MUST be unbindable — clearing the assignment and returning the work item to an available state. |
+**Capabilities:**
+
+| ID | Capability |
+|----|------------|
+| L6.1 | Work assignment is durable — it survives agent restarts, crashes, and handoffs. |
+| L6.2 | A work item is exclusively assigned to at most one agent at a time. |
+| L6.3 | Binding is atomic — the agent's current-work reference and the work item's assigned-agent field update together. |
+| L6.4 | Binding occurs before the agent session starts, so that the initial context assembly sees the assignment immediately. |
+| L6.5 | An execution plan (formula) can be attached to the work item at binding time. |
+| L6.6 | Concurrent binding attempts on the same work item are prevented. |
+| L6.7 | Bindings are reversible — the assignment can be cleared, returning the work item to an available state. |
 
 ---
 
 ### L7 — Communication
 
-How the agent hears from and talks to the system.
+*How the agent hears from and talks to the system.*
 
-**Functional Requirements:**
+**Principle:** Agents must be addressable participants in a messaging system that supports both durable asynchronous messages and low-latency synchronous delivery. Communication must work across agent restarts and support priority-based ordering.
 
-| ID | Requirement |
-|----|-------------|
-| L7.1 | The system MUST support two communication modes: **asynchronous messages** (durable, stored, delivered at turn boundaries) and **synchronous injection** (immediate, interrupts current work). |
-| L7.2 | Asynchronous messages MUST be durable — stored in a database and surviving agent restarts. |
-| L7.3 | Messages MUST support priority tiers (at minimum: urgent, high, normal, low) that affect delivery framing and injection order. |
-| L7.4 | Message delivery MUST be trackable through at least two phases: sent (pending) and acknowledged (injected into agent context). |
-| L7.5 | Agents MUST be addressable by a hierarchical path (e.g., project/role/name). Address resolution MUST validate against registered agents. |
-| L7.6 | The system MUST support delivery patterns: direct (one-to-one), list (one-to-many), channel (pub/sub), queue (claim-based), and broadcast (all agents). |
-| L7.7 | The system MUST support typed/structured messages (protocol messages) for machine-to-machine coordination. |
-| L7.8 | Agents MUST be able to opt out of interruptions (do-not-disturb mode), with a force-override for critical messages. |
-| L7.9 | The system MUST support read-only observation of an agent's current output without affecting its execution. |
-| L7.10 | Severity-based escalation MUST route alerts to configurable targets based on urgency level. |
+**Capabilities:**
+
+| ID | Capability |
+|----|------------|
+| L7.1 | The system supports both asynchronous messages (durable, delivered at turn boundaries) and synchronous delivery (immediate, may interrupt current work). |
+| L7.2 | Asynchronous messages are durable — they survive agent restarts and are not lost if the agent is unavailable at send time. |
+| L7.3 | Messages carry priority levels that affect delivery order and framing. |
+| L7.4 | Message delivery is trackable through at least two states: sent and acknowledged. |
+| L7.5 | Agents are addressable by a structured identifier. Address resolution validates against registered agents. |
+| L7.6 | The system supports multiple delivery patterns: direct (one-to-one), group (one-to-many), subscription-based (pub/sub), claim-based (queue), and broadcast (all agents). |
+| L7.7 | The system supports structured/typed messages for machine-to-machine coordination alongside free-form messages. |
+| L7.8 | Agents can suppress non-critical interruptions, with an override for urgent messages. |
+| L7.9 | Alerts can be routed to configurable targets based on severity. |
 
 ---
 
 ### L8 — Execution Navigation
 
-How the agent tracks and advances through its work.
+*How the agent tracks and advances through its work.*
 
-**Functional Requirements:**
+**Principle:** Work must be decomposable into structured execution plans with dependency ordering. The system — not the agent's memory — tracks execution state, ensuring progress survives agent replacement.
 
-| ID | Requirement |
-|----|-------------|
-| L8.1 | Work MUST be decomposable into a formula — a structured execution plan consisting of ordered steps. |
-| L8.2 | Formulas MUST support step dependencies as a directed acyclic graph (DAG). Steps with satisfied dependencies are "ready"; steps with unsatisfied dependencies are "blocked." |
-| L8.3 | The system MUST support both lightweight formulas (checklist in agent context only, no persistent step tracking) and persistent formulas (each step tracked as a discrete work item in the database). |
-| L8.4 | Formulas MUST support template variables — parameterized values resolved at instantiation time. |
-| L8.5 | Formulas MUST support typed execution patterns including at minimum: sequential workflow, parallel convoy (multi-leg with synthesis), and composition (formula inheritance and extension). |
-| L8.6 | Step advancement MUST be explicit — the agent signals completion of a step, the system computes the next ready step(s), and the agent's context is updated. |
-| L8.7 | The system MUST support idle-wait patterns — an agent suspending execution until a signal or event arrives, with configurable backoff. |
-| L8.8 | Formula progress MUST be queryable: current step, percentage complete, blocked/ready counts. |
+**Capabilities:**
+
+| ID | Capability |
+|----|------------|
+| L8.1 | Work is decomposable into a structured execution plan (formula) consisting of discrete steps. |
+| L8.2 | Steps support dependency ordering as a directed acyclic graph. The system determines which steps are ready based on completed dependencies. |
+| L8.3 | Execution plans exist at multiple fidelity levels — from lightweight checklists held only in agent context to fully persistent plans where each step is independently tracked in the system store. |
+| L8.4 | Execution plans support parameterization — template variables resolved at instantiation time. |
+| L8.5 | Execution plans support multiple topologies: sequential, parallel with join, and compositional (plan inheritance and extension). |
+| L8.6 | Step advancement is explicit — the agent signals completion, the system computes the next ready steps, and the agent's context is updated. |
+| L8.7 | Agents can suspend execution to wait for an external signal or event, with configurable backoff behavior. |
+| L8.8 | Execution progress is queryable: current step, completion percentage, and blocked/ready counts. |
 
 ---
 
 ### L9 — Work Delivery
 
-How completed work leaves the agent.
+*How completed work leaves the agent.*
 
-**Functional Requirements:**
+**Principle:** Work delivery must follow a defined, resumable protocol. Each phase of delivery is checkpointed so that failures mid-delivery result in resumption, not repetition. All work events are durably recorded.
 
-| ID | Requirement |
-|----|-------------|
-| L9.1 | Work delivery MUST follow a defined protocol: validate completion → publish artifacts → create review request → notify stakeholders → close work item → release binding. |
-| L9.2 | The delivery protocol MUST be checkpoint-based — each phase writes a durable checkpoint so that a crash mid-delivery can resume from the last completed phase rather than restarting. |
-| L9.3 | Delivery MUST notify both the review system and the oversight system that work is complete. |
-| L9.4 | For multi-part work (convoys), completion of a tracked sub-item MUST trigger an automatic check of whether the parent convoy is fully satisfied. |
-| L9.5 | All work events (dispatch, completion, handoff, errors) MUST be recorded in a durable, append-only event feed. |
-| L9.6 | The system MUST maintain a human-readable activity log alongside the structured event feed. |
-| L9.7 | After delivery, the agent's workspace MUST be cleaned up — synced back to the base branch with the work branch removed. |
+**Capabilities:**
+
+| ID | Capability |
+|----|------------|
+| L9.1 | Delivery follows a defined protocol of ordered phases: validate → publish → submit for review → notify stakeholders → close work item → release binding. |
+| L9.2 | Each delivery phase is checkpointed. A failure mid-delivery resumes from the last completed checkpoint. |
+| L9.3 | Delivery notifies the appropriate review and oversight participants. |
+| L9.4 | For compound work items, completion of a sub-item triggers evaluation of whether the parent item is fully satisfied. |
+| L9.5 | All work lifecycle events are recorded in a durable, append-only event store. |
+| L9.6 | The system maintains a human-readable activity log alongside the structured event store. |
+| L9.7 | After delivery, the agent's workspace is returned to a clean baseline state. |
 
 ---
 
 ### L10 — Lifecycle Contract
 
-How the agent is spawned, cycled, and stopped.
+*How the agent is spawned, cycled, and stopped.*
 
-**Functional Requirements:**
+**Principle:** All agents — regardless of role — follow the same lifecycle: create → start → run → replace-or-stop. Session continuity is maintained across agent replacements through durable state, not agent memory. The harness owns the lifecycle; the agent is a tenant.
 
-| ID | Requirement |
-|----|-------------|
-| L10.1 | All agent roles MUST be startable through a single, unified startup function that accepts role-specific configuration. |
-| L10.2 | The startup sequence MUST: create the process container, launch the agent binary with appropriate environment, wait for readiness, and verify the agent is responsive. |
-| L10.3 | The harness MUST support in-place session replacement (handoff) — the agent saves its state, sends a summary to its successor, and the process is atomically replaced without destroying the container. |
-| L10.4 | Handoff MUST preserve: the work binding, the execution plan attachment, and the version-control branch. The successor agent resumes from where the predecessor stopped. |
-| L10.5 | The harness MUST support context cycling — triggered by memory pressure, the agent's context is compacted and the session is refreshed with a continuation directive. |
-| L10.6 | Graceful shutdown MUST follow a defined sequence: signal → wait → force-terminate. |
-| L10.7 | In a multi-agent system, shutdown MUST follow a defined order (supervisory roles last). |
-| L10.8 | The harness MUST support crash recovery via checkpoint files. A successor session detects the checkpoint and resumes from the recorded state. |
-| L10.9 | The harness MUST support predecessor session access — a new session can read the transcript of a previous session for context recovery. |
-| L10.10 | The harness MUST detect stale messages — messages sent before the current session started MUST be identified and not re-processed. |
-| L10.11 | Critical roles MUST support auto-respawn — if the agent process dies, the container automatically restarts it after a debounce period. |
-| L10.12 | Agent liveness MUST be detectable via heartbeat files and process tracking, with guards against PID reuse. |
+**Capabilities:**
+
+| ID | Capability |
+|----|------------|
+| L10.1 | All agent roles are startable through a unified startup path that accepts role-specific configuration. |
+| L10.2 | Startup provisions the execution boundary, launches the agent with appropriate context, waits for readiness, and verifies responsiveness. |
+| L10.3 | The harness supports session continuity — an agent can be replaced within its execution boundary while preserving identity, work binding, and execution state. |
+| L10.4 | On replacement, the outgoing agent's state summary is delivered to its successor. The successor resumes from where the predecessor stopped. |
+| L10.5 | Under memory pressure, the harness can refresh the agent's context without full replacement. |
+| L10.6 | Shutdown follows a defined escalation: request → grace period → forced termination. |
+| L10.7 | Multi-agent shutdown follows a defined order — supervised agents stop before their supervisors. |
+| L10.8 | The harness supports crash recovery — a successor session can detect and resume from a checkpointed state. |
+| L10.9 | The harness provides access to predecessor session history for context recovery. |
+| L10.10 | The harness distinguishes messages from the current session versus prior sessions, preventing re-processing of stale messages. |
+| L10.11 | Critical roles support automatic restart after process failure, with a dampening delay to prevent restart loops. |
+| L10.12 | Agent liveness is detectable through periodic health signals, with safeguards against false-positive detection from recycled process identifiers. |
 
 ---
 
-## 4. Propulsion Cycle
+## 4. Agent Lifecycle
 
-The canonical lifecycle of a work-executing agent, expressed as functional phases.
+The canonical lifecycle of a work-executing agent, expressed as abstract phases.
 
-### Phase A — Birth
+### Phase A — Provisioning
 
-1. **Dispatch**: An operator or agent triggers work assignment, targeting a project.
-2. **Identity allocation**: The system allocates an agent name (from a pool or by creation).
-3. **Workspace creation**: A working directory is provisioned with access to the shared database, fallback context, and behavioral configuration.
-4. **Work binding**: The execution plan is instantiated, the work item is atomically bound to the agent, and a formula is attached.
-5. **Session creation**: The process container is created and the agent binary is launched with full environment.
-6. **Prompt assembly**: The startup hook fires, injecting role context, work details, and an autonomous execution directive.
+1. **Dispatch**: Work assignment is triggered, targeting a project.
+2. **Identity allocation**: The system allocates or creates an agent identity.
+3. **Workspace provisioning**: An isolated workspace is provisioned with access to shared resources and behavioral configuration.
+4. **Work binding**: The work item is atomically bound to the agent with an execution plan attached.
 
 ### Phase B — Activation
 
-7. **Message check**: On each turn, the harness checks for inbound messages and injects them into the agent's context.
-8. **Work recognition**: The agent sees its assigned work item and the attached formula checklist.
-9. **Autonomous start**: The execution directive instructs the agent to begin immediately without waiting for human input.
+5. **Session creation**: The execution boundary is created and the agent is launched with appropriate environment and context.
+6. **Context assembly**: The harness delivers the full role context, work details, and autonomous execution directive.
+7. **Autonomous start**: The agent begins executing its assigned work without waiting for human input.
 
 ### Phase C — Execution
 
-10. **Step execution**: The agent works through formula steps in dependency order.
-11. **Communication**: The agent sends and receives messages as needed during execution.
-12. **Guard enforcement**: The harness intercepts and blocks any prohibited actions.
+8. **Plan execution**: The agent works through execution plan steps in dependency order.
+9. **Communication**: The agent sends and receives messages as needed. Inbound messages are delivered at turn boundaries or injected immediately depending on urgency.
+10. **Control enforcement**: The harness evaluates and blocks prohibited actions.
 
-### Phase D — Submission
+### Phase D — Delivery
 
-13. **Delivery protocol**: The agent validates, publishes, and submits its work through the checkpoint-based delivery sequence.
-14. **Stakeholder notification**: Review and oversight systems are notified.
-15. **Cleanup**: Work item is closed, binding is released, workspace is reset.
+11. **Completion protocol**: The agent validates and publishes its work through the checkpointed delivery sequence.
+12. **Notification**: Review and oversight participants are notified.
+13. **Cleanup**: Work item is closed, binding is released, workspace is reset to baseline.
 
-### Phase E — Cycling (alternative to Phase D)
+### Phase E — Continuity (alternative to Phase D)
 
-16. **Context pressure**: If the agent's context fills before work is done, the compaction hook fires and re-injects a lighter context with a continuation directive.
-17. **Manual handoff**: The agent saves state, sends a summary to its successor, and the session is atomically replaced. The successor picks up from the predecessor's last state.
+14. **Memory pressure**: The harness refreshes the agent's context with a minimal continuation directive, preserving work state.
+15. **Session replacement**: The agent saves state and is replaced. The successor receives the predecessor's summary and resumes execution. Work binding, execution plan, and all durable state persist across the boundary.
 
 ---
 
-## 5. Cross-Cutting Concerns
+## 5. Cross-Cutting Principles
 
-### 5.1 Determinism and Addressability
+### 5.1 Addressability
 
-Every agent in the system MUST be deterministically addressable by a hierarchical path: `{project}/{role-class}/{name}`. This path is derivable from the agent's working directory, its process container name, and its entry in the work-item database.
+Every agent is uniquely and deterministically addressable. The addressing scheme is consistent across all system interfaces: messaging, work assignment, observation, and lifecycle management.
 
 ### 5.2 Crash Safety
 
-All state transitions that cross a failure boundary (work binding, delivery, handoff) MUST be checkpoint-based. The system MUST be able to resume from the last successful checkpoint rather than restarting the entire operation.
+All state transitions that cross a failure boundary (work binding, delivery, handoff) are checkpointed. The system resumes from the last successful checkpoint rather than restarting the operation.
 
-### 5.3 Configuration as Code
+### 5.3 Reproducible Configuration
 
-All behavioral configuration (guards, hooks, role definitions) MUST be regenerable from a deterministic merge of source layers. Runtime-modified configuration MUST be recoverable by re-running the merge algorithm.
+All behavioral configuration — controls, role definitions, agent selection — is reproducible from its source inputs through a deterministic resolution process. Runtime configuration can always be regenerated from source.
 
-### 5.4 Work-Item Database as Source of Truth
+### 5.4 External State as Source of Truth
 
-The durable work-item database — not agent memory or local files — is the authoritative record of: work assignments, agent state, message history, and completion status. Local file state (checkpoints, handoff markers, heartbeats) is ephemeral and subordinate.
+The system's persistent store — not agent memory or local ephemeral state — is the authoritative record of work assignments, agent state, message history, and completion status. Ephemeral local state (checkpoints, markers, heartbeats) exists only to bridge failure gaps.
 
-### 5.5 Agent-Runtime Agnosticism
+### 5.5 Runtime Agnosticism
 
-The harness MUST support pluggable agent runtimes. Adding a new AI provider requires registering its capabilities (binary, flags, readiness detection, hook support) without modifying the harness core. The harness communicates with all agent types through the same interfaces: text injection, environment variables, and CLI commands.
+The harness is independent of any specific AI provider. New agent runtimes are integrable by declaring their capabilities without modifying the harness core. The harness communicates with all agent types through the same abstract interfaces.
+
+### 5.6 Separation of Harness and Role
+
+The harness provides infrastructure; roles provide intelligence. Role-specific behaviors (scheduling algorithms, review procedures, monitoring strategies) are consumers of the harness, not part of it. The harness is the same for every role.
 
 ---
 
 ## 6. Invariants
 
-Properties that MUST hold at all times across the system.
+Properties that hold at all times across any conforming implementation.
 
 | ID | Invariant |
 |----|-----------|
 | INV-1 | A work item is assigned to at most one agent at any time. |
-| INV-2 | An agent's authoritative identity is set at container creation and does not change for the lifetime of that container. |
-| INV-3 | The work binding survives any number of handoffs and crash-recovery cycles. |
-| INV-4 | Messages sent before the current session started are never re-processed as new. |
-| INV-5 | Guard rules are evaluated on every tool invocation, with no bypass mechanism available to the agent. |
-| INV-6 | The prompt assembly pipeline produces identical output for identical inputs, regardless of agent runtime. |
-| INV-7 | All work events are recorded in the append-only event feed before the operation is considered complete. |
-| INV-8 | An agent's workspace path uniquely identifies its role, project, and name. |
+| INV-2 | An agent's authoritative identity is immutable for the lifetime of its session. |
+| INV-3 | Work binding survives any number of agent replacements and crash-recovery cycles. |
+| INV-4 | Messages from prior sessions are distinguishable from current-session messages and are not re-processed. |
+| INV-5 | Behavioral controls are evaluated on every agent action, with no bypass available to the agent. |
+| INV-6 | Context assembly produces equivalent output for equivalent inputs, regardless of agent runtime. |
+| INV-7 | Work lifecycle events are durably recorded before the triggering operation is considered complete. |
+| INV-8 | An agent's identity is derivable from its workspace, and its workspace is derivable from its identity. |
 | INV-9 | Behavioral configuration is reproducible from source inputs alone. |
