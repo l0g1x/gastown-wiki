@@ -1,6 +1,6 @@
 # Gas Town Agent Harness Architecture
 
-> Reflects upstream commit: `ae11c53c`
+> Reflects upstream commit: `7a6c8189`
 
 The definitive reference for the universal control infrastructure that wraps
 every Gas Town AI agent. Synthesized from 10 deep investigation documents

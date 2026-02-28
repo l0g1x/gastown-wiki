@@ -1,6 +1,6 @@
 # 03 — Agent Identity Layer
 
-> Reflects upstream commit: `ae11c53c`
+> Reflects upstream commit: `7a6c8189`
 
 Deep architectural investigation of how every Gas Town agent gets its identity,
 model, and behavioral settings. Source code is in

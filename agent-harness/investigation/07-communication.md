@@ -1,6 +1,6 @@
 # 07 — Communication Layer
 
-> Reflects upstream commit: `ae11c53c`
+> Reflects upstream commit: `7a6c8189`
 
 Investigation of how any agent talks to and hears from the rest of the system.
 

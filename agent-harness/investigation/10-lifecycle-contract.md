@@ -1,6 +1,6 @@
 # Investigation 10: The Lifecycle Contract
 
-> Reflects upstream commit: `ae11c53c`
+> Reflects upstream commit: `7a6c8189`
 
 **Scope**: The universal spawn → start → run → handoff → stop contract shared by all Gas Town agent roles.
 

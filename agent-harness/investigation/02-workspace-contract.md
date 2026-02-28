@@ -1,6 +1,6 @@
 # Gas Town Workspace Contract
 
-> Reflects upstream commit: `ae11c53c`
+> Reflects upstream commit: `7a6c8189`
 
 Investigation of the filesystem world every agent inhabits — the workspace contract.
 

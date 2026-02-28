@@ -1,6 +1,6 @@
 # Gas Town Behavioral Controls
 
-> Reflects upstream commit: `ae11c53c`
+> Reflects upstream commit: `7a6c8189`
 
 ## Overview
 

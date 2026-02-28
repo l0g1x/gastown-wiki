@@ -1,6 +1,6 @@
 # 09 — Work Delivery Layer
 
-> Reflects upstream commit: `ae11c53c`
+> Reflects upstream commit: `7a6c8189`
 
 **Investigation date:** 2026-02-28
 **Source tree:** `/home/krystian/gt/gastown/crew/sherlock/`

@@ -1,6 +1,6 @@
 # Work Binding Layer — Investigation
 
-> Reflects upstream commit: `ae11c53c`
+> Reflects upstream commit: `7a6c8189`
 
 **Date:** 2026-02-28
 **Investigator:** Sherlock

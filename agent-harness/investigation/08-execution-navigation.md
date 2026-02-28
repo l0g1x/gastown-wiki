@@ -1,6 +1,6 @@
 # 08 — Execution Navigation
 
-> Reflects upstream commit: `ae11c53c`
+> Reflects upstream commit: `7a6c8189`
 
 **Scope:** The agent-facing interface for tracking and advancing through assigned work.
 
@@ -88,6 +88,20 @@ type Formula struct {
 
     // aspect-specific
     Aspects []Aspect              `toml:"aspects"`
+
+    // composition — formula inheritance
+    Extends []string              `toml:"extends"`      // base formula names to inherit from
+    Compose *Compose              `toml:"compose"`      // composition rules (aspects to weave, expansions to apply)
+
+    // aspect-oriented programming (AOP)
+    Advice    []Advice            `toml:"advice"`       // AOP-style advice definitions
+    Pointcuts []Pointcut          `toml:"pointcuts"`    // step targeting patterns for advice
+
+    // completion behavior
+    Squash *Squash                `toml:"squash"`       // commit squash config on formula completion
+
+    // configurable presets (e.g., convoy leg selection)
+    Presets map[string]Preset     `toml:"presets"`
 }
 ```
 
@@ -100,6 +114,62 @@ type Step struct {
     Needs       []string `toml:"needs"`         // step IDs this depends on (DAG edges)
     Parallel    bool     `toml:"parallel"`      // can run concurrently with sibling parallel steps
     Acceptance  string   `toml:"acceptance"`   // exit criteria (for Ralph loop mode)
+    Gate        *Gate    `toml:"gate"`          // conditional gate for step execution
+}
+```
+
+**Composition types:**
+```go
+type Compose struct {
+    Aspects []string        `toml:"aspects"` // aspect formulas to weave in
+    Expand  []ComposeExpand `toml:"expand"`  // expansion rules to apply
+}
+
+type ComposeExpand struct {
+    Target string `toml:"target"` // step ID to expand
+    With   string `toml:"with"`   // expansion formula to apply
+}
+```
+
+**AOP types:**
+```go
+type Advice struct {
+    Target string        `toml:"target"` // step ID pattern to advise
+    Around *AdviceAround `toml:"around"` // before/after step injection
+}
+
+type AdviceAround struct {
+    Before []AdviceStep `toml:"before"`
+    After  []AdviceStep `toml:"after"`
+}
+
+type AdviceStep struct {
+    ID          string `toml:"id"`
+    Title       string `toml:"title"`
+    Description string `toml:"description"`
+}
+
+type Pointcut struct {
+    Glob string `toml:"glob"` // glob pattern matching step IDs
+}
+```
+
+**Completion and configuration types:**
+```go
+type Squash struct {
+    Trigger        string `toml:"trigger"`       // e.g. "on_complete"
+    TemplateType   string `toml:"template_type"` // e.g. "work"
+    IncludeMetrics bool   `toml:"include_metrics"`
+}
+
+type Gate struct {
+    Type      string `toml:"type"`      // e.g. "conditional"
+    Condition string `toml:"condition"` // condition expression
+}
+
+type Preset struct {
+    Description string   `toml:"description"`
+    Legs        []string `toml:"legs"` // convoy leg IDs to include
 }
 ```
 
@@ -121,9 +191,15 @@ Vars support shorthand syntax: `[vars.base_branch]` with `default = "main"`, or 
 | Type | Execution model | Steps field |
 |------|----------------|-------------|
 | `workflow` | Sequential with DAG dependencies | `[[steps]]` with `needs` |
-| `convoy` | Parallel legs then synthesis | `[[legs]]` + `[synthesis]` |
+| `convoy` | Parallel legs then synthesis | `[[legs]]` + `[synthesis]`; supports `[presets]` for named leg subsets |
 | `expansion` | Template-based step generation | `[[template]]` with `needs` |
-| `aspect` | Parallel multi-aspect analysis | `[[aspects]]` (no dependencies) |
+| `aspect` | Parallel multi-aspect analysis | `[[aspects]]` or `[[advice]]` + `[[pointcuts]]` for AOP-style injection |
+
+**Composition**: Workflow formulas can use `extends = ["base-formula"]` to inherit steps from a base formula. No local `[[steps]]` required — steps come from the base. A `[compose]` section can weave in aspects (`compose.aspects`) and apply expansion rules (`[[compose.expand]]`).
+
+**Conditional gates**: Individual steps can have a `[gate]` with `type` and `condition` fields, controlling whether the step executes based on runtime conditions.
+
+**Presets**: Convoy formulas can define `[presets.<name>]` with `description` and `legs` fields, allowing named subsets of legs (e.g., "gate" vs "full" review).
 
 ### Real formula examples
 
@@ -155,7 +231,11 @@ formula.ParseFile(path)                               parser.go:12
        ├─ toml.Decode(string(data), &f)
        ├─ f.inferType()                              parser.go:38 — infers type from content if unset
        └─ f.Validate()                               parser.go:56
-            ├─ validateWorkflow()                    parser.go:119 — unique IDs, valid needs refs, cycle check
+            ├─ validateWorkflow()                    parser.go:119
+            │    └─ composition-aware: if extends is set, zero local steps is valid
+            │       (steps come from base formula)
+            ├─ validateAspect()                      parser.go:189
+            │    └─ accepts either aspects or advice (AOP-style providers)
             └─ checkCycles()                         parser.go:208 — DFS cycle detection
 ```
 
@@ -588,9 +668,12 @@ The agent interacts with it primarily through `gt hook` (= `gt mol status`), whi
 
 See [Formula Schema](#formula-schema-toml) above. Key fields:
 - `formula` (required), `description`, `type` (workflow/convoy/expansion/aspect), `version`
-- `[[steps]]` with `id`, `title`, `description`, `needs`, `parallel`, `acceptance`
+- `[[steps]]` with `id`, `title`, `description`, `needs`, `parallel`, `acceptance`, `gate`
 - `[vars.<name>]` with `description`, `required`, `default`
-- `[[legs]]`/`[synthesis]` for convoy type
+- `[[legs]]`/`[synthesis]` for convoy type; `[presets.<name>]` for named leg subsets
+- `extends` + `[compose]` for formula inheritance and composition
+- `[[advice]]` + `[[pointcuts]]` for AOP-style step injection
+- `[squash]` for completion squash behavior
 - Type is inferred from content if not explicit
 
 ### 3. How does the agent know what step it's on?

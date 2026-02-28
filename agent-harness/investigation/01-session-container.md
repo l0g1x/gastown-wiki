@@ -1,6 +1,6 @@
 # Session Container: tmux as the Universal Agent Process Container
 
-> Reflects upstream commit: `ae11c53c`
+> Reflects upstream commit: `7a6c8189`
 
 Investigation of the Gas Town agent harness session container layer.
 
